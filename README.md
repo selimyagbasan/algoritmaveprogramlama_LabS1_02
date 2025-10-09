@@ -20,3 +20,4 @@ Her görev klasörüne aşağıdaki 3 dosyayı yükleyiniz:
 - Her görev klasöründe 3 dosya bulunmalıdır. Eksik dosya sıfır puan olarak değerlendirilir.
 
 🕓 Son teslim tarihi: **16 Ekim 2025**
+ AYRINTILAR İÇİN WEBSİTEMİZDEKİ LABORATUVAR SUNUM NOTLARINA BAKINIZ
