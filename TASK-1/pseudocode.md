@@ -1,0 +1,130 @@
+BAŞLA
+
+  // Değişken Tanımlamaları
+  DEĞİŞKEN kart_takili MI BOOLEAN = HAYIR
+  DEĞİŞKEN pin_dogru MU BOOLEAN = HAYIR
+  DEĞİŞKEN deneme_hakki SAYI = 3
+  DEĞİŞKEN kullanici_hesaplari LİSTE
+  DEĞİŞKEN secilen_hesap NESNE
+  DEĞİŞKEN cekilecek_tutar SAYI
+  DEĞİŞKEN islem_devam_ediyor MU BOOLEAN = EVET
+
+  // Ana Döngü
+  DÖNGÜ SÜRESİNCE (islem_devam_ediyor MU)
+
+    // 1. Kart Girişi
+    EĞER kart_takili DEĞİLSE
+      EKRANA YAZ "Lütfen kartınızı takınız."
+      KART_OKUYUCUYU_KONTROL_ET
+      EĞER KART_TAKILDIYSA
+        kart_takili = EVET
+        // Kart bilgilerini ve geçerliliğini kontrol et
+        EĞER KART_GECERLI_DEGILSE
+          EKRANA YAZ "Kartınız geçersiz. Lütfen başka bir kart deneyiniz."
+          KARTI_CIKAR
+          kart_takili = HAYIR
+        SON_EĞER
+      SON_EĞER
+    SON_EĞER
+
+    // 2. PIN Girişi ve Doğrulama
+    EĞER kart_takili VE pin_dogru MU DEĞİLSE
+      DÖNGÜ SÜRESİNCE (deneme_hakki > 0 VE pin_dogru MU DEĞİLSE)
+        EKRANA YAZ "Lütfen 4 haneli şifrenizi giriniz."
+        GİRİLEN_PIN = KLAVYEDEN_OKU
+        
+        // PIN'in geçerli bir formatta olduğunu varsayalım (örneğin 4 haneli sayı)
+        EĞER GIRILEN_PIN_GECERLI_FORMATTA_İSE
+          // Banka sistemi ile PIN'i doğrula
+          EĞER BANKA_SISTEMI_PIN_DOGRULA(KART_ID, GIRILEN_PIN)
+            pin_dogru MU = EVET
+          DEĞİLSE
+            deneme_hakki = deneme_hakki - 1
+            EKRANA YAZ "Hatalı şifre girdiniz. Kalan deneme hakkınız: " + deneme_hakki
+          SON_EĞER
+        DEĞİLSE
+          EKRANA YAZ "Geçersiz şifre formatı. Lütfen 4 haneli bir sayı giriniz."
+        SON_EĞER
+      SON_DÖNGÜ
+
+      EĞER pin_dogru MU DEĞİLSE
+        EKRANA YAZ "Şifrenizi 3 kez hatalı girdiniz. Kartınız bloke edilmiştir."
+        KARTI_YUT
+        islem_devam_ediyor MU = HAYIR
+      SON_EĞER
+    SON_EĞER
+
+    // 3. İşlem Menüsü
+    EĞER pin_dogru MU
+      EKRANA YAZ "Lütfen yapmak istediğiniz işlemi seçiniz:"
+      EKRANA YAZ "1. Para Çekme"
+      EKRANA YAZ "2. Bakiye Sorgulama"
+      EKRANA YAZ "3. Çıkış"
+      
+      SECIM = KLAVYEDEN_OKU
+
+      // 4. Para Çekme İşlemi
+      EĞER SECIM == 1
+        // Kullanıcının hesaplarını getir
+        kullanici_hesaplari = BANKA_SISTEMI_HESAPLARI_GETIR(KART_ID)
+        EKRANA_HESAPLARI_LISTELE(kullanici_hesaplari)
+        EKRANA YAZ "Lütfen para çekmek istediğiniz hesabı seçiniz."
+        SECILEN_HESAP_NO = KLAVYEDEN_OKU
+        secilen_hesap = HESABI_BUL(kullanici_hesaplari, SECILEN_HESAP_NO)
+
+        EĞER secilen_hesap MEVCUTSA
+          EKRANA YAZ "Lütfen çekmek istediğiniz tutarı giriniz."
+          cekilecek_tutar = KLAVYEDEN_OKU
+
+          // Tutarın ATM limitleri dahilinde ve geçerli bir miktar olduğunu kontrol et
+          EĞER cekilecek_tutar <= 0 VEYA cekilecek_tutar % 10 != 0
+            EKRANA YAZ "Geçersiz tutar. Lütfen 10 TL ve katları olacak şekilde bir tutar giriniz."
+          DEĞİLSE
+            // Hesap bakiyesini kontrol et
+            EĞER cekilecek_tutar <= secilen_hesap.bakiye
+              // ATM'deki nakit miktarını kontrol et
+              EĞER ATM_NAKIT_YETERLI_MI(cekilecek_tutar)
+                // Banka sisteminde işlemi gerçekleştir
+                BANKA_SISTEMI_BAKIYEYI_GUNCELLE(secilen_hesap, cekilecek_tutar)
+                // Parayı ver
+                NAKIT_VER(cekilecek_tutar)
+                EKRANA YAZ "İşleminiz başarıyla tamamlandı. Lütfen paranızı alınız."
+                // Fiş yazdırma seçeneği
+                EKRANA YAZ "Fiş istiyor musunuz? (E/H)"
+                FIS_SECIMI = KLAVYEDEN_OKU
+                EĞER FIS_SECIMI == 'E'
+                  FIS_YAZDIR(secilen_hesap, cekilecek_tutar)
+                SON_EĞER
+                islem_devam_ediyor MU = HAYIR // İşlem tamamlandı, döngüden çık
+              DEĞİLSE
+                EKRANA YAZ "ATM'de yeterli nakit bulunmamaktadır."
+              SON_EĞER
+            DEĞİLSE
+              EKRANA YAZ "Hesabınızda yeterli bakiye bulunmamaktadır."
+            SON_EĞER
+          SON_EĞER
+        DEĞİLSE
+          EKRANA YAZ "Geçersiz hesap seçimi."
+        SON_EĞER
+
+      // Diğer İşlemler (Bakiye Sorgulama vb.)
+      DEĞİLSE EĞER SECIM == 2
+        // Bakiye sorgulama işlemleri burada yer alabilir
+        EKRANA YAZ "Bakiye sorgulama işlemi..."
+        islem_devam_ediyor MU = HAYIR // İşlem tamamlandı, döngüden çık
+      
+      // Çıkış
+      DEĞİLSE EĞER SECIM == 3
+        islem_devam_ediyor MU = HAYIR
+      
+      DEĞİLSE
+        EKRANA YAZ "Geçersiz seçim."
+      SON_EĞER
+    SON_EĞER
+  SON_DÖNGÜ
+
+  // 5. İşlem Sonu
+  EKRANA YAZ "İşleminiz sona ermiştir. Lütfen kartınızı almayı unutmayınız."
+  KARTI_CIKAR
+
+SON
