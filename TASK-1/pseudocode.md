@@ -1,130 +1,65 @@
-BAŞLA
-
-  // Değişken Tanımlamaları
-  DEĞİŞKEN kart_takili MI BOOLEAN = HAYIR
-  DEĞİŞKEN pin_dogru MU BOOLEAN = HAYIR
-  DEĞİŞKEN deneme_hakki SAYI = 3
-  DEĞİŞKEN kullanici_hesaplari LİSTE
-  DEĞİŞKEN secilen_hesap NESNE
-  DEĞİŞKEN cekilecek_tutar SAYI
-  DEĞİŞKEN islem_devam_ediyor MU BOOLEAN = EVET
-
-  // Ana Döngü
-  DÖNGÜ SÜRESİNCE (islem_devam_ediyor MU)
-
-    // 1. Kart Girişi
-    EĞER kart_takili DEĞİLSE
-      EKRANA YAZ "Lütfen kartınızı takınız."
-      KART_OKUYUCUYU_KONTROL_ET
-      EĞER KART_TAKILDIYSA
-        kart_takili = EVET
-        // Kart bilgilerini ve geçerliliğini kontrol et
-        EĞER KART_GECERLI_DEGILSE
-          EKRANA YAZ "Kartınız geçersiz. Lütfen başka bir kart deneyiniz."
-          KARTI_CIKAR
-          kart_takili = HAYIR
-        SON_EĞER
-      SON_EĞER
-    SON_EĞER
-
-    // 2. PIN Girişi ve Doğrulama
-    EĞER kart_takili VE pin_dogru MU DEĞİLSE
-      DÖNGÜ SÜRESİNCE (deneme_hakki > 0 VE pin_dogru MU DEĞİLSE)
-        EKRANA YAZ "Lütfen 4 haneli şifrenizi giriniz."
-        GİRİLEN_PIN = KLAVYEDEN_OKU
-        
-        // PIN'in geçerli bir formatta olduğunu varsayalım (örneğin 4 haneli sayı)
-        EĞER GIRILEN_PIN_GECERLI_FORMATTA_İSE
-          // Banka sistemi ile PIN'i doğrula
-          EĞER BANKA_SISTEMI_PIN_DOGRULA(KART_ID, GIRILEN_PIN)
-            pin_dogru MU = EVET
-          DEĞİLSE
-            deneme_hakki = deneme_hakki - 1
-            EKRANA YAZ "Hatalı şifre girdiniz. Kalan deneme hakkınız: " + deneme_hakki
-          SON_EĞER
-        DEĞİLSE
-          EKRANA YAZ "Geçersiz şifre formatı. Lütfen 4 haneli bir sayı giriniz."
-        SON_EĞER
-      SON_DÖNGÜ
-
-      EĞER pin_dogru MU DEĞİLSE
-        EKRANA YAZ "Şifrenizi 3 kez hatalı girdiniz. Kartınız bloke edilmiştir."
-        KARTI_YUT
-        islem_devam_ediyor MU = HAYIR
-      SON_EĞER
-    SON_EĞER
-
-    // 3. İşlem Menüsü
-    EĞER pin_dogru MU
-      EKRANA YAZ "Lütfen yapmak istediğiniz işlemi seçiniz:"
-      EKRANA YAZ "1. Para Çekme"
-      EKRANA YAZ "2. Bakiye Sorgulama"
-      EKRANA YAZ "3. Çıkış"
-      
-      SECIM = KLAVYEDEN_OKU
-
-      // 4. Para Çekme İşlemi
-      EĞER SECIM == 1
-        // Kullanıcının hesaplarını getir
-        kullanici_hesaplari = BANKA_SISTEMI_HESAPLARI_GETIR(KART_ID)
-        EKRANA_HESAPLARI_LISTELE(kullanici_hesaplari)
-        EKRANA YAZ "Lütfen para çekmek istediğiniz hesabı seçiniz."
-        SECILEN_HESAP_NO = KLAVYEDEN_OKU
-        secilen_hesap = HESABI_BUL(kullanici_hesaplari, SECILEN_HESAP_NO)
-
-        EĞER secilen_hesap MEVCUTSA
-          EKRANA YAZ "Lütfen çekmek istediğiniz tutarı giriniz."
-          cekilecek_tutar = KLAVYEDEN_OKU
-
-          // Tutarın ATM limitleri dahilinde ve geçerli bir miktar olduğunu kontrol et
-          EĞER cekilecek_tutar <= 0 VEYA cekilecek_tutar % 10 != 0
-            EKRANA YAZ "Geçersiz tutar. Lütfen 10 TL ve katları olacak şekilde bir tutar giriniz."
-          DEĞİLSE
-            // Hesap bakiyesini kontrol et
-            EĞER cekilecek_tutar <= secilen_hesap.bakiye
-              // ATM'deki nakit miktarını kontrol et
-              EĞER ATM_NAKIT_YETERLI_MI(cekilecek_tutar)
-                // Banka sisteminde işlemi gerçekleştir
-                BANKA_SISTEMI_BAKIYEYI_GUNCELLE(secilen_hesap, cekilecek_tutar)
-                // Parayı ver
-                NAKIT_VER(cekilecek_tutar)
-                EKRANA YAZ "İşleminiz başarıyla tamamlandı. Lütfen paranızı alınız."
-                // Fiş yazdırma seçeneği
-                EKRANA YAZ "Fiş istiyor musunuz? (E/H)"
-                FIS_SECIMI = KLAVYEDEN_OKU
-                EĞER FIS_SECIMI == 'E'
-                  FIS_YAZDIR(secilen_hesap, cekilecek_tutar)
-                SON_EĞER
-                islem_devam_ediyor MU = HAYIR // İşlem tamamlandı, döngüden çık
-              DEĞİLSE
-                EKRANA YAZ "ATM'de yeterli nakit bulunmamaktadır."
-              SON_EĞER
-            DEĞİLSE
-              EKRANA YAZ "Hesabınızda yeterli bakiye bulunmamaktadır."
-            SON_EĞER
-          SON_EĞER
-        DEĞİLSE
-          EKRANA YAZ "Geçersiz hesap seçimi."
-        SON_EĞER
-
-      // Diğer İşlemler (Bakiye Sorgulama vb.)
-      DEĞİLSE EĞER SECIM == 2
-        // Bakiye sorgulama işlemleri burada yer alabilir
-        EKRANA YAZ "Bakiye sorgulama işlemi..."
-        islem_devam_ediyor MU = HAYIR // İşlem tamamlandı, döngüden çık
-      
-      // Çıkış
-      DEĞİLSE EĞER SECIM == 3
-        islem_devam_ediyor MU = HAYIR
-      
-      DEĞİLSE
-        EKRANA YAZ "Geçersiz seçim."
-      SON_EĞER
-    SON_EĞER
-  SON_DÖNGÜ
-
-  // 5. İşlem Sonu
-  EKRANA YAZ "İşleminiz sona ermiştir. Lütfen kartınızı almayı unutmayınız."
-  KARTI_CIKAR
-
-SON
+// atm.dot — ATM para çekme akışı (Graphviz DOT)
+digraph ATM {
+  rankdir=TB;                     // yukarıdan aşağı akış
+  node [fontname="Helvetica"];
+  
+  // düğüm stilleri
+  Start [label="Başla", shape=circle, style=filled, fillcolor="#e6f7ff"];
+  InsertCard [label="Kartı tak", shape=box];
+  ReadCard [label="Kartı oku / kimlik doğrula", shape=box];
+  EnterPIN [label="PIN gir", shape=box];
+  CheckPIN [label="PIN doğru mu?", shape=diamond];
+  PIN_Incorrect [label="Yanlış PIN", shape=box];
+  PIN_Attempts [label="PIN deneme sayısı++", shape=box];
+  RetainCard [label="Kartı tut (3 yanlış)", shape=box, style=filled, fillcolor="#ffe6e6"];
+  
+  MainMenu [label="İşlem seç (Para Çekme / Diğer)", shape=box];
+  SelectWithdrawal [label="Para Çekme seçildi mi?", shape=diamond];
+  EnterAmount [label="Çekilecek tutarı gir", shape=box];
+  CheckBalance [label="Hesapta yeterli para var mı?", shape=diamond];
+  CheckATM [label="ATM'de yeterli nakit var mı?", shape=diamond];
+  DispenseCash [label="Parayı ver (fiş opc.)", shape=box, style=filled, fillcolor="#e6ffe6"];
+  UpdateAccount [label="Hesap bakiyesini güncelle", shape=box];
+  EjectCard [label="Kartı ver / çıkış", shape=box];
+  PrintReceipt [label="Fiş yazdır (isteğe bağlı)", shape=box];
+  End [label="Bitiş", shape=circle, style=filled, fillcolor="#e6f7ff"];
+  
+  InsufficientFunds [label="Yetersiz bakiye -> Hata mesajı", shape=box, style=filled, fillcolor="#fff0e6"];
+  InsufficientATM [label="ATM'de yetersiz nakit -> Hata mesajı", shape=box, style=filled, fillcolor="#fff0e6"];
+  Cancelled [label="İşlem iptal edildi", shape=box];
+  
+  // kenarlar (akış)
+  Start -> InsertCard -> ReadCard -> EnterPIN -> CheckPIN;
+  
+  CheckPIN -> EnterAmount [label="PIN doğru", style=solid, fontsize=10, tailport=s, headport=n];
+  CheckPIN -> PIN_Incorrect [label="PIN yanlış", style=dashed];
+  
+  PIN_Incorrect -> PIN_Attempts -> CheckPIN [label="3'ten az ise tekrar PIN iste", style=dotted];
+  PIN_Attempts -> RetainCard [label="3 ise", style=bold];
+  RetainCard -> End;
+  
+  EnterAmount -> SelectWithdrawal [label="(akışı devam ettir)"];
+  SelectWithdrawal -> MainMenu [label="Evet: Para Çekme değilse menüye", style=dotted];
+  MainMenu -> SelectWithdrawal;
+  
+  SelectWithdrawal -> EnterAmount [label="Evet", style=solid];
+  EnterAmount -> CheckBalance;
+  
+  CheckBalance -> InsufficientFunds [label="Hayır", style=dashed];
+  InsufficientFunds -> EjectCard -> End;
+  
+  CheckBalance -> CheckATM [label="Evet"];
+  CheckATM -> InsufficientATM [label="Hayır"];
+  InsufficientATM -> Cancelled -> EjectCard -> End;
+  
+  CheckATM -> DispenseCash [label="Evet"];
+  DispenseCash -> UpdateAccount -> PrintReceipt -> EjectCard -> End;
+  
+  // iptal ve zaman aşımı yolları
+  EnterPIN -> Cancelled [label="Kullanıcı iptal etti", style=dotted];
+  EnterAmount -> Cancelled [label="Kullanıcı iptal etti", style=dotted];
+  Cancelled -> EjectCard;
+  
+  // görsel düzenleme
+  { rank = same; DispenseCash UpdateAccount PrintReceipt }
+}
